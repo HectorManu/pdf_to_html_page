@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertidor PDF a HTML</title>
+    <!-- Incluir la librería pdf.js desde un CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        /* Estilos generales y de reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Contenedor principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* Encabezado */
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Sección de subida de archivos */
+        .upload-section {
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .upload-zone {
+            border: 3px dashed #d1d5db;
+            border-radius: 15px;
+            padding: 60px 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f9fafb;
+        }
+
+        .upload-zone:hover {
+            border-color: #4f46e5;
+            background: #f0f9ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: #4f46e5;
+            background: #ede9fe;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #9ca3af;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Sección de progreso */
+        .progress-section {
+            padding: 20px 40px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #6b7280;
+        }
+
+        /* Sección de resultados */
+        .results-section {
+            padding: 40px;
+            display: none;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+        }
+
+        /* Salida de HTML */
+        .html-output {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Sección de vista previa */
+        .preview-section {
+            padding: 40px;
+            border-top: 1px solid #e5e7eb;
+            display: none;
+        }
+
+        .preview-title {
+            font-size: 1.5rem;
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .preview-content {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            width: 100%;
+            height: 600px;
+        }
+        
+        /* Mensajes de error y éxito */
+        .error-message, .success-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 40px 0;
+            display: none;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: #dc2626;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #166534;
+        }
+
+        /* Diseño responsivo */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                margin: 0;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .upload-section, .results-section, .preview-section, .error-message, .success-message {
+                padding: 20px;
+                margin: 20px 20px 0;
+            }
+
+            .results-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Convertidor PDF a HTML</h1>
+            <p>Convierte tus archivos PDF a HTML con estructura automática de títulos</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Arrastra y suelta tu archivo PDF aquí</div>
+                <div class="upload-text">o</div>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    Seleccionar archivo
+                </button>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf">
+            </div>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="progress-section" id="progressSection">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Procesando PDF...</div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <div class="results-title">📋 Código HTML Generado</div>
+                <button class="copy-btn" onclick="copyToClipboard()">Copiar HTML</button>
+            </div>
+            <div class="html-output" id="htmlOutput"></div>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="preview-title">👀 Vista Previa</div>
+            <iframe class="preview-content" id="previewContent" title="Vista Previa" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Configurar el worker de PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        // Variable global para almacenar el HTML generado
+        let generatedHTML = '';
+
+        // Elementos del DOM
+        const fileInput = document.getElementById('fileInput');
+        const uploadZone = document.getElementById('uploadZone');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const resultsSection = document.getElementById('resultsSection');
+        const previewSection = document.getElementById('previewSection');
+        const htmlOutput = document.getElementById('htmlOutput');
+        const previewContent = document.getElementById('previewContent');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        // Event listener para el input de archivo
+        fileInput.addEventListener('change', handleFile);
+
+        // Funcionalidad de arrastrar y soltar
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files; // Asignar archivos al input
+                handleFile({ target: { files } });
+            }
+        });
+
+        // Maneja la selección del archivo
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                showError('Por favor selecciona un archivo PDF válido.');
+                return;
+            }
+
+            hideMessages();
+            showProgress();
+            processPDF(file);
+        }
+
+        // Procesa el archivo PDF
+        async function processPDF(file) {
+            try {
+                updateProgress(10, 'Cargando archivo PDF...');
+                
+                const arrayBuffer = await file.arrayBuffer();
+                updateProgress(30, 'Analizando estructura del PDF...');
+
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const totalPages = pdf.numPages;
+
+                let textItems = [];
+                let annotations = [];
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const progress = 30 + (i / totalPages) * 40;
+                    updateProgress(progress, `Procesando página ${i} de ${totalPages}...`);
+                    
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageAnnotations = await page.getAnnotations();
+                    const viewport = page.getViewport({ scale: 1 });
+                    const pageHeight = viewport.height;
+                    const pageWidth = viewport.width;
+
+                    // Procesar anotaciones (hipervínculos)
+                    pageAnnotations.forEach(annotation => {
+                        if (annotation.subtype === 'Link' && annotation.url) {
+                            annotations.push({
+                                url: annotation.url,
+                                rect: annotation.rect,
+                                page: i,
+                                pageHeight: pageHeight
+                            });
+                        }
+                    });
+
+                    // Obtener información de estilo de cada elemento de texto
+                    textContent.items.forEach(item => {
+                        if (item.str.trim()) {
+                            textItems.push({
+                                text: item.str.trim(),
+                                fontSize: item.height,
+                                fontName: item.fontName || '',
+                                x: item.transform[4],
+                                y: pageHeight - item.transform[5], // Invertir coordenada Y
+                                width: item.width,
+                                page: i,
+                                pageHeight: pageHeight,
+                                pageWidth: pageWidth
+                            });
+                        }
+                    });
+                }
+
+                updateProgress(75, 'Detectando hipervínculos...');
+                textItems = associateLinksWithText(textItems, annotations);
+
+                updateProgress(85, 'Generando estructura HTML...');
+                const html = generateHTMLStructure(textItems);
+                generatedHTML = html;
+
+                updateProgress(100, 'Conversión completada');
+
+                setTimeout(() => {
+                    hideProgress();
+                    showResults(html);
+                    showSuccess('¡PDF convertido exitosamente a HTML!');
+                }, 500);
+
+            } catch (error) {
+                console.error('Error procesando PDF:', error);
+                hideProgress();
+                showError('Error al procesar el PDF. Asegúrate de que el archivo no esté dañado.');
+            }
+        }
+
+        // Asocia texto con hipervínculos si se superponen
+        function associateLinksWithText(textItems, annotations) {
+            return textItems.map(item => {
+                const linkedAnnotation = annotations.find(annotation => {
+                    if (annotation.page !== item.page) return false;
+                    const [x1, y1, x2, y2] = annotation.rect;
+                    const linkY1 = annotation.pageHeight - y2;
+                    const linkY2 = annotation.pageHeight - y1;
+                    // Comprobar si el punto medio del texto está dentro del área del enlace
+                    const itemMidX = item.x + item.width / 2;
+                    const itemMidY = item.y - item.fontSize / 2;
+                    return itemMidX >= x1 && itemMidX <= x2 && itemMidY >= linkY1 && itemMidY <= linkY2;
+                });
+
+                if (linkedAnnotation) {
+                    return { ...item, link: linkedAnnotation.url };
+                }
+                return item;
+            });
+        }
+        
+        // Genera la estructura HTML a partir de los elementos de texto extraídos
+        function generateHTMLStructure(textItems) {
+            if (textItems.length === 0) {
+                return '<p>No se pudo extraer texto del PDF.</p>';
+            }
+
+            // Filtrar elementos como cabeceras, pies de página y números de página
+            const filteredItems = textItems.filter(item => {
+                const text = item.text.trim();
+                if (/^\d{1,4}$/.test(text)) return false; // Filtra números de página simples
+                if (text.length < 2) return false; // Filtra ruido
+                const relativeY = item.y / item.pageHeight;
+                if (relativeY < 0.08 || relativeY > 0.92) return false; // Filtra cabeceras/pies
+                return true;
+            });
+
+            // Analizar estadísticas de fuentes para detectar el tamaño de fuente del cuerpo de texto
+            const fontSizes = filteredItems.map(item => item.fontSize);
+            const fontSizeFreq = {};
+            fontSizes.forEach(size => {
+                const rounded = Math.round(size * 2) / 2;
+                fontSizeFreq[rounded] = (fontSizeFreq[rounded] || 0) + 1;
+            });
+
+            const normalFontSize = Object.keys(fontSizeFreq).reduce((a, b) =>
+                fontSizeFreq[a] > fontSizeFreq[b] ? a : b, 0);
+
+            // Ordenar elementos por su posición en la página
+            filteredItems.sort((a, b) => {
+                if (a.page !== b.page) return a.page - b.page;
+                if (Math.abs(a.y - b.y) > 5) return a.y - b.y; // Ordenar por Y primero
+                return a.x - b.x;
+            });
+
+            // Agrupar elementos de texto en líneas
+            const lines = [];
+            let currentLine = null;
+            for (const item of filteredItems) {
+                if (!currentLine || Math.abs(currentLine.y - item.y) > 5 || currentLine.page !== item.page) {
+                    if (currentLine) lines.push(currentLine);
+                    currentLine = {
+                        y: item.y, page: item.page, items: [item], text: item.text,
+                        fontSize: item.fontSize, fontName: item.fontName, x: item.x,
+                        links: item.link ? [item.link] : []
+                    };
+                } else {
+                    currentLine.items.push(item);
+                    currentLine.text += ' ' + item.text;
+                    if (item.link && !currentLine.links.includes(item.link)) {
+                        currentLine.links.push(item.link);
+                    }
+                }
+            }
+            if (currentLine) lines.push(currentLine);
+            
+            // Determinar el tipo de cada línea (título, párrafo, lista)
+            const elements = lines.map(line => {
+                const text = line.text.trim();
+                const fontSize = line.fontSize;
+                const fontName = line.fontName.toLowerCase();
+                const isBold = fontName.includes('bold') || fontName.includes('black') || fontName.includes('heavy');
+                const isItalic = fontName.includes('italic') || fontName.includes('oblique');
+                const sizeRatio = fontSize / parseFloat(normalFontSize);
+                
+                let type = 'p';
+                let level = 0;
+
+                if (sizeRatio >= 1.6 || (sizeRatio >= 1.4 && isBold)) { type = 'h1'; level = 1; }
+                else if (sizeRatio >= 1.4 || (sizeRatio >= 1.2 && isBold)) { type = 'h2'; level = 2; }
+                else if (sizeRatio >= 1.2 || (sizeRatio >= 1.1 && isBold)) { type = 'h3'; level = 3; }
+                else if (isBold && sizeRatio >= 1.0) { type = 'h4'; level = 4; }
+
+                const isListItem = /^(•|·|-|\*|•|\d+\.|[a-z]\))\s/i.test(text);
+                if (isListItem && type === 'p') {
+                    type = 'li';
+                }
+
+                return { type, level, text, isBold, isItalic, links: line.links, isListItem, page: line.page };
+            });
+
+            // Ensamblar el HTML final con un índice y diseño moderno
+            return buildFinalHTML(elements);
+        }
+
+        // Construye el documento HTML final con índice, tema y contenido
+        function buildFinalHTML(elements) {
+            const tocItems = [];
+            let headingCounter = 0;
+            
+            elements.forEach(el => {
+                if(el.level > 0) {
+                    const id = generateId(el.text, headingCounter);
+                    tocItems.push({id, level: el.level, text: el.text, type: el.type });
+                    el.id = id;
+                    headingCounter++;
+                }
+            });
+
+            // Plantilla HTML del documento generado
+            let html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documento Convertido</title>
+    <style>
+        :root {
+            --bg-primary: #ffffff; --bg-secondary: #f8fafc; --bg-accent: #f1f5f9;
+            --text-primary: #1e293b; --text-secondary: #475569; --text-muted: #64748b;
+            --border-color: #e2e8f0; --accent-color: #3b82f6; --accent-hover: #2563eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); --toc-bg: #f8fafc;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-accent: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #cbd5e1; --text-muted: #94a3b8;
+            --border-color: #334155; --accent-color: #60a5fa; --accent-hover: #3b82f6;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); --toc-bg: #1e293b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Inter", "Segoe UI", sans-serif; line-height: 1.7; color: var(--text-primary); background-color: var(--bg-primary); transition: background-color 0.3s, color 0.3s; }
+        html { scroll-behavior: smooth; }
+        
+        .layout-container { display: flex; }
+
+        .sidebar { flex: 0 0 300px; position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--toc-bg); padding: 24px; border-right: 1px solid var(--border-color); transition: transform 0.3s ease; }
+        .main-content { flex-grow: 1; padding: 40px; }
+        
+        .toc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--border-color); }
+        .toc-title { font-size: 1.2rem; font-weight: 600; color: var(--text-primary); }
+        .theme-toggle { background: var(--bg-accent); border: 1px solid var(--border-color); border-radius: 8px; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s ease; }
+        .theme-toggle:hover { background: var(--accent-color); color: white; transform: scale(1.05); }
+        
+        .toc-nav { list-style: none; }
+        .toc-item { margin-bottom: 4px; }
+        .toc-link { display: block; padding: 8px 12px; color: var(--text-secondary); text-decoration: none; border-radius: 8px; font-size: 0.9rem; transition: all 0.2s ease; border-left: 3px solid transparent; }
+        .toc-link:hover, .toc-link.active { background: var(--bg-accent); color: var(--accent-color); border-left-color: var(--accent-color); transform: translateX(4px); }
+        .toc-h1 { font-weight: 600; }
+        .toc-h2 { padding-left: 20px; }
+        .toc-h3 { padding-left: 32px; font-size: 0.85rem; }
+        .toc-h4 { padding-left: 44px; font-size: 0.8rem; }
+        
+        .main-content-header { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+        .document-title { font-size: 2.5rem; font-weight: 700; color: var(--text-primary); }
+
+        h1, h2, h3, h4 { scroll-margin-top: 20px; }
+        h1 { font-size: 2.2rem; margin: 48px 0 24px 0; padding-bottom: 16px; border-bottom: 2px solid var(--accent-color); }
+        h2 { font-size: 1.6rem; margin: 40px 0 20px 0; padding-left: 16px; border-left: 4px solid var(--accent-color); }
+        h3 { font-size: 1.3rem; margin: 32px 0 16px 0; }
+        p { margin-bottom: 20px; text-align: justify; }
+        ul, ol { margin: 24px 0; padding-left: 24px; }
+        li { margin-bottom: 12px; }
+        a { color: var(--accent-color); text-decoration: none; font-weight: 500; }
+        a:hover { text-decoration: underline; }
+        
+        .mobile-header { display: none; }
+
+        @media (max-width: 1024px) {
+            .sidebar { position: fixed; top: 0; left: 0; z-index: 1000; transform: translateX(-100%); background: var(--bg-primary); box-shadow: var(--shadow); }
+            .sidebar.is-open { transform: translateX(0); }
+            .main-content { padding: 20px; }
+            .layout-container { display: block; }
+
+            .mobile-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 999; }
+            .menu-toggle { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-primary); }
+            .overlay { display: none; }
+            .overlay.is-active { display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 998; }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-header">
+         <h1 class="document-title" style="font-size: 1.2rem; margin: 0;">Documento</h1>
+         <button class="menu-toggle" id="menu-toggle">☰</button>
+    </div>
+
+    <div class="layout-container">
+        <aside class="sidebar" id="sidebar">
+            <nav class="table-of-contents">
+                <div class="toc-header">
+                    <h2 class="toc-title">📚 Índice</h2>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema"><span id="theme-icon">🌙</span></button>
+                </div>
+                <ul class="toc-nav" id="toc-nav">
+                    ${tocItems.map(item => `
+                    <li class="toc-item">
+                        <a href="#${item.id}" class="toc-link toc-${item.type}">${escapeHtml(item.text)}</a>
+                    </li>`).join('')}
+                </ul>
+            </nav>
+        </aside>
+        
+        <div class="overlay" id="overlay"></div>
+
+        <main class="main-content">
+            <header class="main-content-header">
+                <h1 class="document-title">Documento Convertido</h1>
+            </header>
+            ${generateContentHTML(elements)}
+        </main>
+    </div>
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById("theme-icon");
+            if (html.getAttribute("data-theme") === "dark") {
+                html.removeAttribute("data-theme");
+                themeIcon.textContent = "🌙";
+                localStorage.setItem("theme", "light");
+            } else {
+                html.setAttribute("data-theme", "dark");
+                themeIcon.textContent = "☀️";
+                localStorage.setItem("theme", "dark");
+            }
+        }
+        
+        window.addEventListener("DOMContentLoaded", () => {
+            if (localStorage.getItem("theme") === "dark") {
+                toggleTheme();
+            }
+
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const tocLinks = document.querySelectorAll('.toc-link');
+
+            function closeMenu() {
+                sidebar.classList.remove('is-open');
+                overlay.classList.remove('is-active');
+            }
+
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('is-open');
+                overlay.classList.toggle('is-active');
+            });
+            
+            overlay.addEventListener('click', closeMenu);
+            tocLinks.forEach(link => link.addEventListener('click', closeMenu));
+
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    const id = entry.target.getAttribute('id');
+                    const link = document.querySelector(\`.toc-link[href="#\${id}"]\`);
+                    if (entry.isIntersecting) {
+                        document.querySelectorAll('.toc-link.active').forEach(l => l.classList.remove('active'));
+                        if(link) {
+                            link.classList.add('active');
+                            link.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }
+                });
+            }, { rootMargin: "-20% 0px -80% 0px", threshold: 0 });
+
+            document.querySelectorAll('main h1, main h2, main h3, main h4').forEach(h => {
+                if(h) observer.observe(h);
+            });
+        });
+    <\/script>
+</body>
+</html>`;
+            return html;
+        }
+
+        // Genera solo el contenido principal (párrafos, títulos, listas)
+        function generateContentHTML(elements) {
+            let contentHtml = '';
+            let inList = false;
+            let currentPage = 1;
+
+            elements.forEach(element => {
+                if (element.page > currentPage) {
+                    contentHtml += '<hr style="margin: 40px 0; border: 1px dashed #ccc;">\n';
+                    currentPage = element.page;
+                }
+
+                if (inList && !element.isListItem) {
+                    contentHtml += '</ul>\n';
+                    inList = false;
+                }
+
+                if (element.isListItem && !inList) {
+                    contentHtml += '<ul>\n';
+                    inList = true;
+                }
+
+                let text = escapeHtml(element.text);
+                if (element.links.length === 1) {
+                    text = `<a href="${element.links[0]}" target="_blank">${text}</a>`;
+                }
+
+                if (element.type === 'li') {
+                    // Quita el marcador de lista del texto, ya que la etiqueta <li> lo agrega
+                    text = text.replace(/^(\*|•|·|-|\d+\.|[a-z]\))\s+/, '');
+                    contentHtml += `<li>${text}</li>\n`;
+                } else if (element.level > 0) {
+                    contentHtml += `<${element.type} id="${element.id}">${text}</${element.type}>\n`;
+                } else {
+                    contentHtml += `<${element.type}>${text}</${element.type}>\n`;
+                }
+            });
+
+            if (inList) {
+                contentHtml += '</ul>\n';
+            }
+            return contentHtml;
+        }
+
+
+        // Utilidades para limpiar y generar HTML
+        function generateId(text, index) {
+            const cleanText = text.toLowerCase()
+                .replace(/[áäâà]/g, 'a').replace(/[éëêè]/g, 'e')
+                .replace(/[íïîì]/g, 'i').replace(/[óöôò]/g, 'o')
+                .replace(/[úüûù]/g, 'u').replace(/ñ/g, 'n')
+                .replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+            return `${cleanText.substring(0, 50) || 'section'}-${index}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Funciones para mostrar/ocultar elementos de la interfaz
+        function showProgress() {
+            progressSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            previewSection.style.display = 'none';
+        }
+
+        function hideProgress() {
+            progressSection.style.display = 'none';
+        }
+
+        function updateProgress(percent, text) {
+            progressFill.style.width = percent + '%';
+            progressText.textContent = text;
+        }
+
+        function showResults(html) {
+            // Mostrar el código fuente
+            htmlOutput.textContent = html;
+            
+            // Renderizar la vista previa en el iframe
+            const previewFrame = document.getElementById('previewContent');
+            previewFrame.srcdoc = html;
+
+            resultsSection.style.display = 'block';
+            previewSection.style.display = 'block';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        // Función para copiar el HTML al portapapeles
+        function copyToClipboard() {
+            const btn = document.querySelector('.copy-btn');
+            navigator.clipboard.writeText(generatedHTML).then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = '✅ ¡Copiado!';
+                btn.style.background = '#059669'; // Verde más oscuro
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#10b981'; // Verde original
+                }, 2000);
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+                // Fallback para navegadores más antiguos o sin permisos
+                const textArea = document.createElement('textarea');
+                textArea.value = generatedHTML;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showSuccess('HTML copiado al portapapeles (fallback)');
+                } catch (e) {
+                    showError('No se pudo copiar el texto');
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+    </script>
+</body>
+</html>
